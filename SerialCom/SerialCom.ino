@@ -12,9 +12,11 @@
  */
 
 void setup() {
-  delay(100);   // avoid random cpu crash
+  // this code runs only one time when the program starts
+  
+  delay(100);   // avoid random cpu crash at beginning of the program.
 
-  Serial.begin(115200);   // enable serial communication with computer
+  Serial.begin(115200);   // enable serial communication with computer at 115200 Baud
   Serial.println("Board serial COM Test!");
 
 }
