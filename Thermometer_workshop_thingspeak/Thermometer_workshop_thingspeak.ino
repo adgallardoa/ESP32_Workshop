@@ -1,11 +1,14 @@
 /*
- * Digital Thermometer 
+ * Digital IoT Thermometer 
  * 
- * This code is an exampleto show you how to made a single thermometer with: 
+ * This code is an exampleto show you how to connect your DIY thermometer to internet: 
  * - ESP32 development module
  * - LED with its resistance for 3.3V operation
  * - 0.91 Inch OLED Display I2C SSD1306 Chip 128 x 32 resolution
  * - DS18B20 digital 1-wire temperature sensor
+ * 
+ * You will need to create a thinkspeak account on https://thingspeak.com/
+ * or post your data on an existing channel.
  * 
  * 
  * You can use and modify this code under your own responsibility
@@ -14,13 +17,20 @@
  * CEAZA
  * March 2024
  */
+#define TS_ENABLE_SSL // For HTTPS SSL connection
+ 
 #include <Wire.h>                 // communication protocol with OLED module
 #include <Adafruit_GFX.h>         // OLED graphics
 #include <Adafruit_SSD1306.h>     // OLED driver
 #include <OneWire.h>              // communication protocol with temperature sensor
 #include <DallasTemperature.h>    // temperature sensor driver
 #include <WiFiManager.h>          // Wifi network manager
+#include <WiFi.h>
+#include "ThingSpeak.h"
 #include "oled.h"                 // graphics
+#include "secretData.h"
+
+WiFiClient  client;
 
 
 //****************************************************************************************
@@ -28,9 +38,13 @@
 //****************************************************************************************
 const int oneWireBus = 16;        // GPIO where the DS18B20 is connected to
 const int LED_PIN = 2;            // GPIO where the LED is connected to
+const unsigned long myChannelNumber = MY_SECRET_CHANNEL_ID;
+const char * myWriteAPIKey = MY_SECRET_API_KEY;
 float oldTemp;                    // previous temperature measurement used for field display clean
 unsigned long stamp = millis();
 const unsigned long samplingPeriod = 5000;
+unsigned long thingSpeakStamp = millis();
+const unsigned long thingSpeakPeriod = 60000;
 bool lastWifiStatus = false;
 
 
@@ -94,7 +108,7 @@ void updateDisplay(float inData){
 }
 
 
-void ActiveWaitMs(unsigned long delayMsTime){
+void ActiveWaitMs(unsigned long delayMsTime, float number){
   while(millis() - stamp < delayMsTime){
     wm.process();
     if ( WiFi.status() == WL_CONNECTED ){
@@ -102,21 +116,37 @@ void ActiveWaitMs(unsigned long delayMsTime){
         display.drawBitmap(108, 0, wifiDisable, 20, 17, BLACK);
         display.drawBitmap(109, 0, wifiEnable, 18, 17, WHITE);
         display.display();
+        Serial.println("WIFI connected");
         lastWifiStatus = true;
+      }
+
+      if(millis() - thingSpeakStamp > thingSpeakPeriod){
+        thingSpeakStamp = millis();
+        
+        // Write to ThingSpeak. There are up to 8 fields in a channel, allowing you to store up to 8 different
+        // pieces of information in a channel.  Here, we write to field 1.
+        int x = ThingSpeak.writeField(myChannelNumber, 1, number, myWriteAPIKey);
+        if(x == 200){
+          Serial.println("Channel update successful.");
+        }else{
+          Serial.println("Problem updating channel. HTTP error code " + String(x));
+        }
+        
       }
     }else{
       if(lastWifiStatus){
         display.drawBitmap(109, 0, wifiEnable, 18, 17, BLACK);
         display.drawBitmap(108, 0, wifiDisable, 20, 17, WHITE);
         display.display();
+        Serial.println("WIFI connection lost!");
         lastWifiStatus = false;
       }
     }
+
+    
   }
   stamp = millis();
 }
-
-
 
 
 
@@ -157,15 +187,14 @@ void setup() {
 
   // Wifi manager start
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
+  ThingSpeak.begin(client);  // Initialize ThingSpeak
   bool res;
   wm.setConfigPortalBlocking(false);  // allows the program continue running paralel to wifi manager
-  //wm.setConfigPortalTimeout(300);
   //automatically connect using saved credentials if they exist
   //If connection fails it starts an access point with the specified name
   res = wm.autoConnect(); // auto generated AP name from chipid
   if(!res) {
         Serial.println("Failed to connect");
-        // ESP.restart();
     } 
     else {
         //if you get here you have connected to the WiFi    
@@ -173,7 +202,7 @@ void setup() {
         display.drawBitmap(108, 0, wifiDisable, 20, 17, BLACK);
         display.drawBitmap(109, 0, wifiEnable, 18, 17, WHITE);
         display.display();
-        lastWifiStatus = true;
+        //lastWifiStatus = true;
     }
 }
 
@@ -192,6 +221,6 @@ void loop() {
   
   
   oldTemp = newTemp;              // update oldTemp varialbe
-  ActiveWaitMs(samplingPeriod);   // wait meanwhile updating wifi manager
+  ActiveWaitMs(samplingPeriod, newTemp);   // wait meanwhile updating wifi manager
   // and start the loop again...
 }
