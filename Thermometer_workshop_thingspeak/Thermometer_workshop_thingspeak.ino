@@ -53,6 +53,11 @@ OneWire oneWire(oneWireBus);          // Setup a oneWire instance to communicate
 DallasTemperature sensors(&oneWire);  // Pass our oneWire reference to Dallas Temperature sensor 
 
 
+//****************************************************************************************
+// wifi manager class
+//****************************************************************************************
+WiFiManager wm;
+
 
 //****************************************************************************************
 // program Functions
@@ -87,6 +92,32 @@ void updateDisplay(float inData){
   // show updates on screen
   display.display();
 }
+
+
+void ActiveWaitMs(unsigned long delayMsTime){
+  while(millis() - stamp < delayMsTime){
+    wm.process();
+    if ( WiFi.status() == WL_CONNECTED ){
+      if(!lastWifiStatus){
+        display.drawBitmap(108, 0, wifiDisable, 20, 17, BLACK);
+        display.drawBitmap(109, 0, wifiEnable, 18, 17, WHITE);
+        display.display();
+        lastWifiStatus = true;
+      }
+    }else{
+      if(lastWifiStatus){
+        display.drawBitmap(109, 0, wifiEnable, 18, 17, BLACK);
+        display.drawBitmap(108, 0, wifiDisable, 20, 17, WHITE);
+        display.display();
+        lastWifiStatus = false;
+      }
+    }
+  }
+  stamp = millis();
+}
+
+
+
 
 
 
@@ -126,9 +157,11 @@ void setup() {
 
   // Wifi manager start
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
-  //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
-  WiFiManager wm;
   bool res;
+  wm.setConfigPortalBlocking(false);  // allows the program continue running paralel to wifi manager
+  //wm.setConfigPortalTimeout(300);
+  //automatically connect using saved credentials if they exist
+  //If connection fails it starts an access point with the specified name
   res = wm.autoConnect(); // auto generated AP name from chipid
   if(!res) {
         Serial.println("Failed to connect");
@@ -150,34 +183,15 @@ void setup() {
 // Main Loop
 //****************************************************************************************
 void loop() {
-  float newTemp = readTemp();     // update temperature data
+  float newTemp;            // float variable to store new temperature data
+  newTemp = readTemp();     // update temperature data
+  wm.process();             // update wifi manager status
   
-  updateDisplay(newTemp);         // update data on OLED module
-  Serial.print(newTemp);Serial.println("*C");   // update data by serial communcation
+  updateDisplay(newTemp);                       // update temperature data on OLED module
+  Serial.print(newTemp);Serial.println("*C");   // update temperature data by serial communcation 
+  
   
   oldTemp = newTemp;              // update oldTemp varialbe
-  while(millis() - stamp < samplingPeriod){
-//    if ( (wifiClient.connected()) && (WiFi.status() == WL_CONNECTED) ){
-    if ( WiFi.status() == WL_CONNECTED ){
-      if(!lastWifiStatus){
-        display.drawBitmap(108, 0, wifiDisable, 20, 17, BLACK);
-        display.drawBitmap(109, 0, wifiEnable, 18, 17, WHITE);
-        display.display();
-        lastWifiStatus = true;
-      }
-    }else{
-      if(lastWifiStatus){
-        display.drawBitmap(109, 0, wifiEnable, 18, 17, BLACK);
-        display.drawBitmap(108, 0, wifiDisable, 20, 17, WHITE);
-        display.display();
-        lastWifiStatus = false;
-      }
-    }
-  }
-  stamp = millis();
-  
-  
-//  delay(5000);                    // wait until next loop cicle
-  
+  ActiveWaitMs(samplingPeriod);   // wait meanwhile updating wifi manager
   // and start the loop again...
 }
