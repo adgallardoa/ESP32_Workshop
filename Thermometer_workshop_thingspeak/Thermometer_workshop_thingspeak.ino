@@ -38,6 +38,7 @@ WiFiClient  client;
 //****************************************************************************************
 const int oneWireBus = 16;        // GPIO where the DS18B20 is connected to
 const int LED_PIN = 2;            // GPIO where the LED is connected to
+const int BUTTON_PIN = 0;
 const unsigned long myChannelNumber = MY_SECRET_CHANNEL_ID;
 const char * myWriteAPIKey = MY_SECRET_API_KEY;
 float oldTemp;                    // previous temperature measurement used for field display clean
@@ -46,6 +47,8 @@ const unsigned long samplingPeriod = 5000;
 unsigned long thingSpeakStamp = millis();
 const unsigned long thingSpeakPeriod = 60000;
 bool lastWifiStatus = false;
+bool buttonStatus = false;
+int timeout = 120; // seconds to run for
 
 
 //****************************************************************************************
@@ -76,6 +79,15 @@ WiFiManager wm;
 //****************************************************************************************
 // program Functions
 //****************************************************************************************
+void IRAM_ATTR ISR() {
+    detachInterrupt(BUTTON_PIN);
+    Serial.println("Button!");
+    buttonStatus = true;
+    delay(100);
+}
+
+
+
 float readTemp(void){
   digitalWrite(LED_PIN,HIGH);         // Turn on the LED diring temperature reading
   sensors.requestTemperatures();      // Request temperature from sensor
@@ -111,6 +123,17 @@ void updateDisplay(float inData){
 void ActiveWaitMs(unsigned long delayMsTime, float number){
   while(millis() - stamp < delayMsTime){
     wm.process();
+
+    // action when Boot button is pushed
+    if(buttonStatus){       
+      buttonStatus = false;
+      wm.resetSettings();      // delete wifi settings
+      delay(1000);             // wait 1 second
+      ESP.restart();           // restart the device without wifi settings
+      delay(1000);             // just in case
+    }
+
+    // action when Wifi is connected
     if ( WiFi.status() == WL_CONNECTED ){
       if(!lastWifiStatus){
         display.drawBitmap(108, 0, wifiDisable, 20, 17, BLACK);
@@ -120,6 +143,7 @@ void ActiveWaitMs(unsigned long delayMsTime, float number){
         lastWifiStatus = true;
       }
 
+      // Thingseap update timer
       if(millis() - thingSpeakStamp > thingSpeakPeriod){
         thingSpeakStamp = millis();
         
@@ -134,6 +158,7 @@ void ActiveWaitMs(unsigned long delayMsTime, float number){
         
       }
     }else{
+      // action wen wifi is disconnected
       if(lastWifiStatus){
         display.drawBitmap(109, 0, wifiEnable, 18, 17, BLACK);
         display.drawBitmap(108, 0, wifiDisable, 20, 17, WHITE);
@@ -147,6 +172,9 @@ void ActiveWaitMs(unsigned long delayMsTime, float number){
   }
   stamp = millis();
 }
+
+
+
 
 
 
@@ -183,6 +211,8 @@ void setup() {
   // Set controller pin for LED
   pinMode(LED_PIN,OUTPUT); digitalWrite(LED_PIN,LOW);
 
+  pinMode(BUTTON_PIN,INPUT);
+
 
 
   // Wifi manager start
@@ -204,6 +234,9 @@ void setup() {
         display.display();
         //lastWifiStatus = true;
     }
+
+
+    attachInterrupt(BUTTON_PIN, ISR, FALLING);
 }
 
 
