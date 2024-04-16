@@ -13,10 +13,13 @@
  */
 
 const int LED_PIN = 2;        // GPIO where the LED is connected to
+const int LED_GND_PIN = 15;
 
 void setup() {
   pinMode(LED_PIN,OUTPUT);    // set pin as digital output (can be at 0V or 3.3V depending on the program)
   digitalWrite(LED_PIN,LOW);  // set pin at 0V output
+  pinMode(LED_GND_PIN,OUTPUT);
+  digitalWrite(LED_GND_PIN,LOW);
 }
 
 void loop() {
