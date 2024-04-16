@@ -27,6 +27,11 @@
 const int oneWireBus = 16;        // GPIO where the DS18B20 is connected to
 const int LED_PIN = 2;            // GPIO where the LED is connected to
 float oldTemp;                    // previous temperature measurement used for field display clean
+const int LED_GND_PIN = 15;
+const int DS18B20_VCC_PIN = 17;
+const int DS18B20_GND_PIN = 5;
+const int OLED_VCC_PIN = 19;
+const int OLED_GND_PIN = 18;
 
 
 //****************************************************************************************
@@ -91,6 +96,14 @@ void updateDisplay(float inData){
 //****************************************************************************************
 void setup() {
   delay(100);           // to avoid ESP32 crash on start
+
+  // powering devices from IO pins (not ideal)
+  pinMode(LED_GND_PIN,OUTPUT); digitalWrite(LED_GND_PIN,LOW);
+  pinMode(DS18B20_VCC_PIN,OUTPUT); digitalWrite(DS18B20_VCC_PIN,HIGH);
+  pinMode(DS18B20_GND_PIN,OUTPUT); digitalWrite(DS18B20_GND_PIN,LOW);
+  pinMode(OLED_VCC_PIN,OUTPUT); digitalWrite(OLED_VCC_PIN,HIGH);
+  pinMode(OLED_GND_PIN,OUTPUT); digitalWrite(OLED_GND_PIN,LOW);
+  delay(100);  
 
   Serial.begin(115200); // Enable serial communication with the host computer
   while(!Serial){}
