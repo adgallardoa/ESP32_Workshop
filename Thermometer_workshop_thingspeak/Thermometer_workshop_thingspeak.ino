@@ -49,6 +49,11 @@ const unsigned long thingSpeakPeriod = 60000;
 bool lastWifiStatus = false;
 bool buttonStatus = false;
 int timeout = 120; // seconds to run for
+const int LED_GND_PIN = 15;
+const int DS18B20_VCC_PIN = 17;
+const int DS18B20_GND_PIN = 5;
+const int OLED_VCC_PIN = 19;
+const int OLED_GND_PIN = 18;
 
 
 //****************************************************************************************
@@ -186,9 +191,17 @@ void ActiveWaitMs(unsigned long delayMsTime, float number){
 void setup() {
   delay(100);           // to avoid ESP32 crash on start
 
+  // powering devices from IO pins (not ideal)
+  pinMode(LED_GND_PIN,OUTPUT); digitalWrite(LED_GND_PIN,LOW);
+  pinMode(DS18B20_VCC_PIN,OUTPUT); digitalWrite(DS18B20_VCC_PIN,HIGH);
+  pinMode(DS18B20_GND_PIN,OUTPUT); digitalWrite(DS18B20_GND_PIN,LOW);
+  pinMode(OLED_VCC_PIN,OUTPUT); digitalWrite(OLED_VCC_PIN,HIGH);
+  pinMode(OLED_GND_PIN,OUTPUT); digitalWrite(OLED_GND_PIN,LOW);
+  delay(100);  
+
   Serial.begin(115200); // Enable serial communication with the host computer
   while(!Serial){}
-  Serial.println("OLED display Test!");
+  Serial.println("IoT Device Test!");
   
   // Start the OLED module
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32 OLED module
