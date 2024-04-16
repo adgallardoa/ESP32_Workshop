@@ -14,6 +14,8 @@
 #include <DallasTemperature.h>    // Temperature sensor controller library
 
 const int oneWireBus = 16;     // GPIO where the DS18B20 is connected to
+const int DS18B20_VCC_PIN = 17;
+const int DS18B20_GND_PIN = 5;
 
 OneWire oneWire(oneWireBus);  // Setup a oneWire instance to communicate with any OneWire devices
 DallasTemperature sensors(&oneWire);  // Pass our oneWire reference to Dallas Temperature sensor 
@@ -22,6 +24,13 @@ DallasTemperature sensors(&oneWire);  // Pass our oneWire reference to Dallas Te
 
 void setup() {
   delay(100);   // to avoid initial random crash on ESP32 microontroller
+
+  // powering temerature sensor from IO pins (not ideal)
+  pinMode(DS18B20_VCC_PIN,OUTPUT);
+  digitalWrite(DS18B20_VCC_PIN,HIGH);
+  pinMode(DS18B20_GND_PIN,OUTPUT);
+  digitalWrite(DS18B20_GND_PIN,LOW);
+  delay(100);
   
   Serial.begin(115200);
   while(!Serial){}
